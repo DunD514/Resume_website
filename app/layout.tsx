@@ -1,57 +1,66 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import SmoothScroll from "@/components/SmoothScroll";
 
-const inter = Inter({
-  variable: "--font-inter",
+const geistSans = Geist({
+  variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
+  weight: ["200", "300", "400", "500", "600"],
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
+  weight: ["400", "500"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://duncan-portfolio.onrender.com";
+
 export const metadata: Metadata = {
-  title: "Duncan D’Lima | Data Scientist, Applied AI Engineer & Software Developer",
+  metadataBase: new URL(siteUrl),
+  title: "Duncan D'Lima | Data Scientist & Applied AI Engineer",
   description:
-    "Personal portfolio of Duncan D’Lima — B.Tech Data Science (3.89/4.0 CGPA) and CTO & Co-Founder at Tekkloom. Working across machine learning, analytical data pipelines, computer vision, and intelligent software.",
+    "Portfolio of Duncan D'Lima — CTO & Co-Founder at Tekkloom, B.Tech Data Science (3.89 CGPA). Machine learning, data engineering, and applied AI systems.",
   keywords: [
-    "Duncan D’Lima",
+    "Duncan D'Lima",
     "Data Scientist",
     "Applied AI Engineer",
     "Software Developer",
     "Tekkloom",
     "Machine Learning",
     "Deepfake Detection",
-    "DuckDB SQL",
+    "DuckDB",
     "PyTorch",
     "Next.js",
   ],
-  authors: [{ name: "Duncan D’Lima", url: "https://github.com/DunD514" }],
-  creator: "Duncan D’Lima",
+  authors: [{ name: "Duncan D'Lima", url: "https://github.com/DunD514" }],
+  creator: "Duncan D'Lima",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://duncandlima.dev",
-    title: "Duncan D’Lima | Data Scientist & AI Builder",
+    url: siteUrl,
+    title: "Duncan D'Lima | Data Scientist & Applied AI Engineer",
     description:
-      "Turning data into intelligence and ideas into products. Explore projects in deep learning, analytical SQL, exploratory healthcare ML, and document AI.",
-    siteName: "Duncan D’Lima Portfolio",
+      "From raw data to real-world systems. Machine learning, data engineering, and applied AI.",
+    siteName: "Duncan D'Lima Portfolio",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Duncan D'Lima — Data Scientist & Applied AI Engineer",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Duncan D’Lima | Data Scientist & AI Builder",
-    description: "Turning data into intelligence and ideas into products.",
+    title: "Duncan D'Lima | Data Scientist & Applied AI Engineer",
+    description: "From raw data to real-world systems. Machine learning, data engineering, and applied AI.",
     creator: "@DunD514",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -60,7 +69,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050812",
+  themeColor: "#060608",
   width: "device-width",
   initialScale: 1,
 };
@@ -70,13 +79,43 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Duncan D'Lima",
+    jobTitle: "CTO & Co-Founder",
+    worksFor: {
+      "@type": "Organization",
+      name: "Tekkloom",
+      url: "https://github.com/tekkloom-a11y",
+    },
+    alumniOf: {
+      "@type": "CollegeOrUniversity",
+      name: "SVKM's NMIMS MPSTME",
+    },
+    url: siteUrl,
+    sameAs: [
+      "https://github.com/DunD514",
+      "https://github.com/tekkloom-a11y",
+      "https://linkedin.com/in/duncan-dlima",
+    ],
+    description:
+      "Data Scientist, Applied AI Engineer, Software Developer. CTO & Co-Founder at Tekkloom.",
+  };
+
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} scroll-smooth`}
+      className={`${geistSans.variable} ${geistMono.variable} scroll-smooth`}
     >
-      <body className="min-h-screen bg-[#050812] text-[#F8FAFC] antialiased selection:bg-blue-600/30 selection:text-white">
-        {children}
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body className="min-h-screen bg-[#060608] text-[#f4f4f6] antialiased selection:bg-[#ff7a1a]/20 selection:text-white">
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   );

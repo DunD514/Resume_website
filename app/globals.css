@@ -1,126 +1,99 @@
 @import "tailwindcss";
 
 :root {
-  --space-black: #02040A;
-  --space-deep: #030712;
-  --surface-panel: #0B1120;
-  --surface-card: rgba(11, 17, 32, 0.85);
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --telemetry-cyan: #38BDF8;
-  --ignition-amber: #F59E0B;
-  --ignition-orange: #F97316;
-  --indicator-red: #EF4444;
-  --status-emerald: #10B981;
-  --border-telemetry: rgba(56, 189, 248, 0.18);
-  --border-amber: rgba(245, 158, 11, 0.25);
+  --bg-primary: #060608;
+  --bg-secondary: #0a0a0d;
+  --text-primary: #f4f4f6;
+  --text-muted: #888890;
+  --text-dim: #55555c;
+  --accent-ember: #ff7a1a;
+  --accent-ember-dim: rgba(255, 122, 26, 0.15);
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-hairline-hover: rgba(255, 255, 255, 0.2);
+}
+
+html {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  color-scheme: dark;
 }
 
 body {
-  background-color: var(--space-black);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  selection-background-color: rgba(56, 189, 248, 0.25);
-  selection-color: #FFFFFF;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom telemetry scrollbar */
+/* Subtle hairline borders */
+.border-hairline {
+  border-color: var(--border-hairline);
+}
+
+.border-hairline-b {
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.border-hairline-t {
+  border-top: 1px solid var(--border-hairline);
+}
+
+/* Display clamp headings */
+.display-title {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+/* Tiny uppercase metadata mono */
+.meta-mono {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Minimalist scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #02040A;
+  background: #060608;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
-  border-radius: 3px;
+  background: #1c1c22;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #2e2e38;
 }
 
-/* Mission Control panel */
-.mission-panel {
-  background: rgba(11, 17, 32, 0.88);
-  border: 1px solid rgba(56, 189, 248, 0.16);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Feathered visual mask */
+.mask-feather-left {
+  mask-image: linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%);
 }
 
-.mission-panel-hover {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.mission-panel-hover:hover {
-  border-color: rgba(56, 189, 248, 0.4);
-  background: rgba(15, 23, 42, 0.95);
-  box-shadow: 0 10px 30px -10px rgba(56, 189, 248, 0.15);
+.mask-feather-radial {
+  mask-image: radial-gradient(circle at 60% 50%, black 30%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at 60% 50%, black 30%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
 }
 
-/* Telemetry instrumentation borders */
-.telemetry-border {
-  border: 1px solid rgba(56, 189, 248, 0.18);
+/* Focus visibility for accessibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 1.5px solid var(--accent-ember);
+  outline-offset: 3px;
 }
 
-.amber-border {
-  border: 1px solid rgba(245, 158, 11, 0.25);
-}
-
-/* Starfield and space grid pattern */
-.space-grid-pattern {
-  background-size: 48px 48px;
-  background-image: 
-    linear-gradient(to right, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
-}
-
-/* Restrained technical gradient text */
-.text-telemetry-gradient {
-  background: linear-gradient(135deg, #FFFFFF 0%, #BAE6FD 60%, #7DD3FC 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-amber-gradient {
-  background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 50%, #EA580C 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Rocket camera shake keyframes */
-@keyframes rocketShake {
-  0%, 100% { transform: translate(0, 0); }
-  20% { transform: translate(-1.5px, 1.5px); }
-  40% { transform: translate(1.5px, -1px); }
-  60% { transform: translate(-1px, 2px); }
-  80% { transform: translate(1px, -1.5px); }
-}
-
-.animate-rocket-shake {
-  animation: rocketShake 0.12s linear infinite;
-}
-
-/* Engine flame flicker */
-@keyframes flameFlicker {
-  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.95; }
-  50% { transform: scaleY(1.08) scaleX(0.92); opacity: 1; }
-}
-
-.animate-flame-flicker {
-  animation: flameFlicker 0.15s ease-in-out infinite alternate;
-}
-
-/* Radar sweep */
-@keyframes radarSweep {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.animate-radar {
-  animation: radarSweep 8s linear infinite;
-}
-
-/* Accessibility: respect prefers-reduced-motion */
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

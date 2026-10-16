@@ -1,271 +1,163 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  baseAlpha: number;
+}
 
 export default function HeroCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
+    // Check reduced motion
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      setReducedMotion(true);
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || 500);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 500);
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
 
-    // Points on a 3D sphere
-    const numPoints = 140;
-    const sphereRadius = Math.min(width, height) * 0.38;
-    const points: {
-      x: number;
-      y: number;
-      z: number;
-      baseX: number;
-      baseY: number;
-      baseZ: number;
-      size: number;
-      color: string;
-      pulseOffset: number;
-    }[] = [];
+    let mouseX = width / 2;
+    let mouseY = height / 2;
+    let targetMouseX = mouseX;
+    let targetMouseY = mouseY;
 
-    // Colors matching palette: electric blue, vivid violet, cyan
-    const colors = ["#3B82F6", "#60A5FA", "#8B5CF6", "#A78BFA", "#22D3EE"];
+    const count = Math.min(Math.floor((width * height) / 14000), 120);
+    const particles: Particle[] = [];
 
-    // Distribute points on sphere using Fibonacci spiral algorithm
-    const phi = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < numPoints; i++) {
-      const y = 1 - (i / (numPoints - 1)) * 2; // y goes from 1 to -1
-      const radiusAtY = Math.sqrt(1 - y * y);
-      const theta = phi * i;
-
-      const x = Math.cos(theta) * radiusAtY;
-      const z = Math.sin(theta) * radiusAtY;
-
-      points.push({
-        x: x * sphereRadius,
-        y: y * sphereRadius,
-        z: z * sphereRadius,
-        baseX: x * sphereRadius,
-        baseY: y * sphereRadius,
-        baseZ: z * sphereRadius,
-        size: Math.random() * 2 + 1.5,
-        color: colors[i % colors.length],
-        pulseOffset: Math.random() * Math.PI * 2,
+    for (let i = 0; i < count; i++) {
+      const baseAlpha = Math.random() * 0.45 + 0.15;
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: -Math.random() * 0.35 - 0.05, // drifting upward slowly
+        size: Math.random() * 1.5 + 0.5,
+        alpha: baseAlpha,
+        baseAlpha,
       });
     }
 
-    // Special node for Mumbai coordinate location (highlighted beacon)
-    const beaconPoint = {
-      x: 0,
-      y: 0,
-      z: 0,
-      baseX: sphereRadius * 0.6,
-      baseY: -sphereRadius * 0.25,
-      baseZ: sphereRadius * 0.75,
-      size: 4,
-      color: "#22D3EE",
-    };
-
-    let rotX = 0.2;
-    let rotY = 0;
-    let targetRotX = 0.2;
-    let targetRotY = 0;
-    let mouseX = 0;
-    let mouseY = 0;
-    let isHovering = false;
-
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = (e.clientX - rect.left - width / 2) / (width / 2);
-      mouseY = (e.clientY - rect.top - height / 2) / (height / 2);
-      targetRotY = mouseX * 0.8;
-      targetRotX = -mouseY * 0.5 + 0.2;
-      isHovering = true;
-    };
-
-    const handleMouseLeave = () => {
-      isHovering = false;
-      targetRotX = 0.2;
+      targetMouseX = e.clientX;
+      targetMouseY = e.clientY;
     };
 
     const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.clientWidth;
-      height = canvas.height = canvas.parentElement.clientHeight;
+      if (!canvas) return;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
     };
 
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("resize", handleResize);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
 
-    let time = 0;
+    let animationFrameId: number;
+    let lastTime = performance.now();
 
-    const render = () => {
-      time += 0.015;
+    const render = (time: number) => {
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      lastTime = time;
 
-      // Smooth auto-rotation + mouse inertia
-      rotY += 0.004;
-      if (isHovering) {
-        rotX += (targetRotX - rotX) * 0.05;
-        rotY += (targetRotY - (rotY % (Math.PI * 2))) * 0.02;
-      }
+      // Smooth mouse interpolation
+      mouseX += (targetMouseX - mouseX) * 0.04;
+      mouseY += (targetMouseY - mouseY) * 0.04;
 
       ctx.clearRect(0, 0, width, height);
 
-      const cx = width / 2;
-      const cy = height / 2;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
 
-      // Draw faint orbital atmospheric glow
-      const radialGlow = ctx.createRadialGradient(cx, cy, 10, cx, cy, sphereRadius * 1.35);
-      radialGlow.addColorStop(0, "rgba(59, 130, 246, 0.08)");
-      radialGlow.addColorStop(0.5, "rgba(139, 92, 246, 0.04)");
-      radialGlow.addColorStop(1, "rgba(5, 8, 18, 0)");
-      ctx.fillStyle = radialGlow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, sphereRadius * 1.35, 0, Math.PI * 2);
-      ctx.fill();
+        // Move
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
 
-      // Draw subtle orbital ring latitude circles
-      ctx.strokeStyle = "rgba(59, 130, 246, 0.09)";
-      ctx.lineWidth = 1;
-      [-0.4, 0, 0.4].forEach((latRatio) => {
-        const ringR = Math.sqrt(Math.max(0, 1 - latRatio * latRatio)) * sphereRadius;
-        const ringY = latRatio * sphereRadius;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy + ringY * Math.cos(rotX), ringR, ringR * Math.abs(Math.sin(rotX)) * 0.5 + 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      });
-
-      // Rotate and project points
-      const projected = points.map((p) => {
-        // Rotate around Y axis
-        const cosY = Math.cos(rotY);
-        const sinY = Math.sin(rotY);
-        const x1 = p.baseX * cosY - p.baseZ * sinY;
-        const z1 = p.baseX * sinY + p.baseZ * cosY;
-
-        // Rotate around X axis
-        const cosX = Math.cos(rotX);
-        const sinX = Math.sin(rotX);
-        const y2 = p.baseY * cosX - z1 * sinX;
-        const z2 = p.baseY * sinX + z1 * cosX;
-
-        // Perspective scale factor
-        const fov = 400;
-        const scale = fov / (fov + z2);
-        const screenX = cx + x1 * scale;
-        const screenY = cy + y2 * scale;
-        const alpha = Math.max(0.12, (z2 + sphereRadius) / (sphereRadius * 2));
-
-        return {
-          ...p,
-          screenX,
-          screenY,
-          z2,
-          scale,
-          alpha,
-        };
-      });
-
-      // Sort points by depth (z2) so closer points render over further ones
-      projected.sort((a, b) => a.z2 - b.z2);
-
-      // Draw neural connections between close nearby nodes
-      ctx.lineWidth = 0.75;
-      for (let i = 0; i < projected.length; i++) {
-        for (let j = i + 1; j < projected.length; j++) {
-          const dx = projected[i].screenX - projected[j].screenX;
-          const dy = projected[i].screenY - projected[j].screenY;
-          const distSq = dx * dx + dy * dy;
-
-          if (distSq < 3200) {
-            const dist = Math.sqrt(distSq);
-            const lineAlpha = (1 - dist / 56.5) * Math.min(projected[i].alpha, projected[j].alpha) * 0.45;
-            ctx.strokeStyle = `rgba(59, 130, 246, ${lineAlpha})`;
-            ctx.beginPath();
-            ctx.moveTo(projected[i].screenX, projected[i].screenY);
-            ctx.lineTo(projected[j].screenX, projected[j].screenY);
-            ctx.stroke();
-          }
+        // Subtle repulsion from cursor
+        const dx = p.x - mouseX;
+        const dy = p.y - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 180 && dist > 0) {
+          const force = (1 - dist / 180) * 0.4;
+          p.x += (dx / dist) * force;
+          p.y += (dy / dist) * force;
         }
+
+        // Wrap around bounds
+        if (p.y < 0) {
+          p.y = height + 5;
+          p.x = Math.random() * width;
+        }
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+
+        // Draw particle (soft warm/cool stardust)
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(240, 240, 248, ${p.alpha})`;
+        ctx.fill();
       }
 
-      // Draw points
-      projected.forEach((p) => {
-        const pulse = Math.sin(time * 2 + p.pulseOffset) * 0.5 + 0.5;
-        const r = Math.max(1, p.size * p.scale * (0.8 + pulse * 0.4));
-
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.alpha;
-        ctx.beginPath();
-        ctx.arc(p.screenX, p.screenY, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Subtle glow for front-facing points
-        if (p.z2 > 0 && p.alpha > 0.6) {
-          ctx.fillStyle = p.color;
-          ctx.globalAlpha = (p.alpha - 0.6) * 0.35;
-          ctx.beginPath();
-          ctx.arc(p.screenX, p.screenY, r * 2.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-
-      // Render beacon (Mumbai Location indicator)
-      const cosY = Math.cos(rotY);
-      const sinY = Math.sin(rotY);
-      const bx1 = beaconPoint.baseX * cosY - beaconPoint.baseZ * sinY;
-      const bz1 = beaconPoint.baseX * sinY + beaconPoint.baseZ * cosY;
-      const cosX = Math.cos(rotX);
-      const sinX = Math.sin(rotX);
-      const by2 = beaconPoint.baseY * cosX - bz1 * sinX;
-      const bz2 = beaconPoint.baseY * sinX + bz1 * cosX;
-
-      const bScale = 400 / (400 + bz2);
-      const bScreenX = cx + bx1 * bScale;
-      const bScreenY = cy + by2 * bScale;
-
-      if (bz2 > -sphereRadius * 0.2) {
-        const ringPulse = (time * 1.5) % 1;
-        ctx.strokeStyle = `rgba(34, 211, 238, ${1 - ringPulse})`;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(bScreenX, bScreenY, 6 + ringPulse * 18, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = "#22D3EE";
-        ctx.globalAlpha = 1;
-        ctx.beginPath();
-        ctx.arc(bScreenX, bScreenY, 3.5 * bScale, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Annotation label for Duncan's location
-        ctx.fillStyle = "rgba(248, 250, 252, 0.85)";
-        ctx.font = "10px monospace";
-        ctx.fillText("Mumbai · IN [Tekkloom]", bScreenX + 12, bScreenY - 4);
-      }
-
-      ctx.globalAlpha = 1;
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, []);
 
+  if (reducedMotion) {
+    return (
+      <div
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          background:
+            "radial-gradient(ellipse at 70% 30%, rgba(255, 122, 26, 0.05) 0%, transparent 60%)",
+        }}
+      />
+    );
+  }
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-full cursor-grab active:cursor-grabbing block"
-      aria-label="Interactive 3D Data Network Visualization"
-    />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ opacity: 0.85 }}
+      />
+      {/* Feathered gradient over canvas to guarantee dark contrast on left text side */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at 15% 50%, #060608 25%, rgba(6, 6, 8, 0.85) 60%, rgba(6, 6, 8, 0.2) 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to bottom, #060608 0%, transparent 15%, transparent 85%, #060608 100%)",
+        }}
+      />
+    </div>
   );
 }

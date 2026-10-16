@@ -65,17 +65,17 @@ export async function fetchDuncanGitHubRepos(): Promise<GitHubRepoSummary[]> {
 }
 
 function fallbackRepos(): GitHubRepoSummary[] {
-  return PORTFOLIO_DATA.githubData.pinnedRepos.map((r) => ({
+  return PORTFOLIO_DATA.fallbackRepos.map((r) => ({
     name: r.name,
     fullName: r.fullName,
     description: r.description,
     language: r.language,
     languageColor: r.languageColor,
     url: r.url,
-    stars: 0,
-    forks: 0,
-    updatedAt: "Active",
-    tags: r.tags,
-    verified: r.verified,
+    stars: r.stars,
+    forks: r.forks,
+    updatedAt: r.updatedAt,
+    tags: [r.language],
+    verified: true,
   }));
 }

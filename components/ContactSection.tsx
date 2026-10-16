@@ -1,59 +1,60 @@
 "use client";
 
 import React, { useState } from "react";
+import { ArrowUp, ArrowUpRight, Copy, Check, Send, AlertCircle, Mail } from "lucide-react";
 import { PORTFOLIO_DATA } from "@/data/portfolioData";
-import { Mail, Send, Copy, Check, ArrowUp, Sparkles, MessageSquare, AlertCircle, Radio } from "lucide-react";
-import { GithubIcon, LinkedinIcon } from "./Icons";
 
 export default function ContactSection() {
-  const { personal } = PORTFOLIO_DATA;
-  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [formData, setFormData] = useState({ name: "", email: "", message: "", honeypot: "" });
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "fallback">("idle");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [mailtoUrl, setMailtoUrl] = useState("");
 
-  // Form states
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [submittedName, setSubmittedName] = useState("");
+  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "duncan.dlima@example.com";
 
-  const copyEmailToClipboard = () => {
-    navigator.clipboard.writeText(personal.publicEmailDisplay);
-    setCopiedEmail(true);
-    setTimeout(() => setCopiedEmail(false), 2500);
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
+    } catch {
+      // Fallback
+    }
   };
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!formData.name.trim()) errs.name = "Please enter your name.";
-    if (!formData.email.trim()) {
-      errs.email = "Please enter your email.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errs.email = "Please enter a valid email address.";
-    }
-    if (!formData.subject.trim()) errs.subject = "Please specify a subject.";
-    if (!formData.message.trim() || formData.message.trim().length < 10) {
-      errs.message = "Message must be at least 10 characters.";
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    setStatus("loading");
+    setStatusMessage("");
 
-    setStatus("submitting");
-    // Simulate real client submission with prompt mailto fallback guarantee
-    setTimeout(() => {
-      setSubmittedName(formData.name);
-      setStatus("success");
-      // Prepare direct mailto URL backup so user can also open email client directly if desired
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 900);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus("success");
+        setStatusMessage(data.message || "Message sent successfully.");
+        setFormData({ name: "", email: "", message: "", honeypot: "" });
+      } else if (data.fallbackMailto && data.mailtoUrl) {
+        setStatus("fallback");
+        setStatusMessage(
+          "Direct server dispatch is currently in fallback mode. Click below to send via your email client."
+        );
+        setMailtoUrl(data.mailtoUrl);
+      } else {
+        setStatus("error");
+        setStatusMessage(data.error || "Failed to transmit message. Please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setStatusMessage("Network error transmitting message. Please email directly.");
+    }
   };
 
   const scrollToTop = () => {
@@ -61,238 +62,205 @@ export default function ContactSection() {
   };
 
   return (
-    <section id="contact" className="pt-24 pb-12 relative bg-[#040713]" aria-label="Contact Duncan D'Lima">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/10 rounded-full blur-[160px] pointer-events-none" />
+    <section id="contact" className="relative pt-28 md:pt-36 pb-12 px-6 md:px-12 max-w-7xl mx-auto">
+      {/* Giant Heading */}
+      <div className="border-b border-white/[0.08] pb-12">
+        <span className="meta-mono">[07] // GET IN TOUCH</span>
+        <h2 className="mt-4 text-[10vw] sm:text-[7vw] lg:text-[5.5vw] font-[200] tracking-[-0.03em] leading-[0.98] text-[#f4f4f6]">
+          Have an interesting problem?{" "}
+          <span className="text-[#ff7a1a]">Let&apos;s talk.</span>
+        </h2>
+        <p className="mt-6 text-base sm:text-xl text-[#888890] font-[200] max-w-xl">
+          Always open to challenging machine learning architectures, high-performance data pipelines, and technical leadership conversations.
+        </p>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
-        {/* Contact Header */}
-        <div className="text-center max-w-2xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium tracking-wider uppercase text-sky-400 bg-sky-500/10 border border-sky-500/25">
-            <Radio className="w-3.5 h-3.5 text-cyan-400" />
-            MISSION COMMUNICATIONS // DIRECT UPLINK
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-['Space_Grotesk'] text-slate-100">
-            Have an interesting problem?{" "}
-            <span className="text-telemetry-gradient">Let’s talk.</span>
-          </h2>
-          <p className="text-sm sm:text-base text-slate-400 font-light leading-relaxed">
-            I’m interested in machine learning, data engineering, applied AI, and opportunities to engineer technology that solves real-world problems.
-          </p>
-        </div>
-
-        {/* Contact Grid: Direct Reachout Info + Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Direct channels column */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="glass-panel p-6 sm:p-7 rounded-2xl border border-blue-500/20 space-y-6">
-              <h3 className="text-lg font-bold font-['Space_Grotesk'] text-slate-100">
-                Direct Communication Channels
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Whether you’re recruiting for a data science or AI engineering role, looking to collaborate, or exploring what we’re building at Tekkloom, feel free to connect.
-              </p>
-
-              {/* Email Box with One-Click Copy */}
-              <div className="p-4 rounded-xl bg-[#070B18] border border-slate-800 space-y-2">
-                <span className="text-[10px] font-mono uppercase text-slate-500 tracking-wider">
-                  Configured Public Email
-                </span>
-                <div className="flex items-center justify-between gap-2">
-                  <a
-                    href={`mailto:${personal.publicEmailDisplay}`}
-                    className="text-sm font-mono text-cyan-400 hover:underline truncate"
-                  >
-                    {personal.publicEmailDisplay}
-                  </a>
-                  <button
-                    onClick={copyEmailToClipboard}
-                    className="p-1.5 rounded-md bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0 cursor-pointer"
-                    title="Copy email to clipboard"
-                    aria-label="Copy email"
-                  >
-                    {copiedEmail ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-                {copiedEmail && (
-                  <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Copied to clipboard!
-                  </span>
-                )}
-              </div>
-
-              {/* Verified Links */}
-              <div className="space-y-3">
-                <a
-                  href={personal.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <GithubIcon className="w-4 h-4 text-blue-400" />
-                    <div>
-                      <div className="font-semibold text-slate-200">GitHub Profile</div>
-                      <div className="text-slate-500 font-mono text-[11px]">DunD514</div>
-                    </div>
-                  </div>
-                  <span className="text-blue-400 font-mono">github.com/DunD514 →</span>
-                </a>
-
-                <a
-                  href={personal.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-violet-500/40 hover:bg-slate-800/60 transition-all text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <LinkedinIcon className="w-4 h-4 text-violet-400" />
-                    <div>
-                      <div className="font-semibold text-slate-200">LinkedIn Profile</div>
-                      <div className="text-slate-500 font-mono text-[11px]">Duncan D’Lima</div>
-                    </div>
-                  </div>
-                  <span className="text-violet-400 font-mono">Connect →</span>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive Contact Form with Validation */}
-          <div className="lg:col-span-7">
-            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-blue-500/20 shadow-xl shadow-black/40">
-              <div className="flex items-center gap-2 mb-6">
-                <MessageSquare className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-lg font-bold font-['Space_Grotesk'] text-slate-100">
-                  Send a Direct Message
-                </h3>
-              </div>
-
-              {status === "success" ? (
-                <div className="p-6 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-4 animate-in fade-in duration-300">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                    <Check className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-base font-bold text-slate-100">
-                      Thank you, {submittedName}!
-                    </h4>
-                    <p className="text-xs sm:text-sm text-slate-300">
-                      Your message has been received. I will review it and follow up as soon as possible.
-                    </p>
-                  </div>
-                  <div className="pt-2">
-                    <button
-                      onClick={() => setStatus("idle")}
-                      className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
-                    >
-                      Send Another Message
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label htmlFor="name" className="block text-xs font-mono text-slate-300">
-                        Your Name *
-                      </label>
-                      <input
-                        id="name"
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Maya Patel"
-                        className={`w-full bg-[#070B18] border rounded-lg px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors ${
-                          errors.name ? "border-rose-500 focus:border-rose-400" : "border-slate-800 focus:border-blue-500/60"
-                        }`}
-                      />
-                      {errors.name && <span className="text-[10px] text-rose-400">{errors.name}</span>}
-                    </div>
-
-                    <div className="space-y-1">
-                      <label htmlFor="email" className="block text-xs font-mono text-slate-300">
-                        Email Address *
-                      </label>
-                      <input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="e.g. maya@company.com"
-                        className={`w-full bg-[#070B18] border rounded-lg px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors ${
-                          errors.email ? "border-rose-500 focus:border-rose-400" : "border-slate-800 focus:border-blue-500/60"
-                        }`}
-                      />
-                      {errors.email && <span className="text-[10px] text-rose-400">{errors.email}</span>}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="subject" className="block text-xs font-mono text-slate-300">
-                      Subject / Topic *
-                    </label>
-                    <input
-                      id="subject"
-                      type="text"
-                      value={formData.subject}
-                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      placeholder="e.g. Data Science / AI Collaboration Opportunity"
-                      className={`w-full bg-[#070B18] border rounded-lg px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors ${
-                        errors.subject ? "border-rose-500 focus:border-rose-400" : "border-slate-800 focus:border-blue-500/60"
-                      }`}
-                    />
-                    {errors.subject && <span className="text-[10px] text-rose-400">{errors.subject}</span>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="message" className="block text-xs font-mono text-slate-300">
-                      Your Message *
-                    </label>
-                    <textarea
-                      id="message"
-                      rows={4}
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      placeholder="Tell me about the problem, project, or role you have in mind..."
-                      className={`w-full bg-[#070B18] border rounded-lg px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors resize-none ${
-                        errors.message ? "border-rose-500 focus:border-rose-400" : "border-slate-800 focus:border-blue-500/60"
-                      }`}
-                    />
-                    {errors.message && <span className="text-[10px] text-rose-400">{errors.message}</span>}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={status === "submitting"}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-mono text-xs font-semibold text-white bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 border border-sky-400/30 shadow-lg shadow-sky-950/40 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{status === "submitting" ? "TRANSMITTING TELEMETRY..." : "TRANSMIT MESSAGE"}</span>
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Minimal Footer */}
-        <div className="pt-12 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-mono">
+      {/* Main Contact Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 py-16 border-b border-white/[0.08]">
+        {/* Left Column: Direct Links & Email Copy */}
+        <div className="lg:col-span-5 space-y-8">
           <div>
-            <span>&copy; 2026 Duncan D’Lima.</span>{" "}
-            <span className="text-slate-400">Designed with intention. Built with curiosity.</span>
+            <span className="meta-mono text-[#55555c]">DIRECT EMAIL</span>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-lg sm:text-xl font-light text-[#f4f4f6] select-all">
+                {email}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyEmail}
+                className="p-2 border border-white/[0.1] hover:border-[#ff7a1a] text-[#888890] hover:text-[#ff7a1a] transition-colors"
+                title="Copy email to clipboard"
+                aria-label="Copy email address"
+              >
+                {copied ? <Check className="w-4 h-4 text-[#ff7a1a]" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            {copied && (
+              <p className="mt-1.5 text-xs font-mono text-[#ff7a1a] animate-in fade-in">
+                Copied to clipboard.
+              </p>
+            )}
           </div>
 
-          <button
-            onClick={scrollToTop}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
-            aria-label="Back to top of page"
-          >
-            <span>Back to top</span>
-            <ArrowUp className="w-3.5 h-3.5" />
-          </button>
+          <div>
+            <span className="meta-mono text-[#55555c]">CHANNELS</span>
+            <div className="mt-4 flex flex-col gap-3 font-mono text-xs">
+              <a
+                href={PORTFOLIO_DATA.personal.social.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-between py-2 border-b border-white/[0.06] text-[#c0c0c8] hover:text-white transition-colors"
+              >
+                <span>LinkedIn &middot; /in/duncan-dlima</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-[#55555c] group-hover:text-[#ff7a1a] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </a>
+
+              <a
+                href={PORTFOLIO_DATA.personal.social.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-between py-2 border-b border-white/[0.06] text-[#c0c0c8] hover:text-white transition-colors"
+              >
+                <span>Personal GitHub &middot; /DunD514</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-[#55555c] group-hover:text-[#ff7a1a] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </a>
+
+              <a
+                href={PORTFOLIO_DATA.personal.social.tekkloomGithub}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-between py-2 border-b border-white/[0.06] text-[#c0c0c8] hover:text-white transition-colors"
+              >
+                <span>Tekkloom GitHub &middot; /tekkloom-a11y</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-[#55555c] group-hover:text-[#ff7a1a] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Working Functional Form */}
+        <div className="lg:col-span-7">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Honeypot field (hidden from real users) */}
+            <input
+              type="text"
+              name="honeypot"
+              tabIndex={-1}
+              autoComplete="off"
+              value={formData.honeypot}
+              onChange={(e) => setFormData({ ...formData, honeypot: e.target.value })}
+              className="hidden"
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="name" className="block meta-mono text-[#888890] mb-2">
+                  NAME *
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Your Name"
+                  className="w-full bg-[#0a0a0f] border border-white/[0.1] px-4 py-3 text-sm text-[#f4f4f6] placeholder-[#55555c] focus:border-[#ff7a1a] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block meta-mono text-[#888890] mb-2">
+                  EMAIL *
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="name@domain.com"
+                  className="w-full bg-[#0a0a0f] border border-white/[0.1] px-4 py-3 text-sm text-[#f4f4f6] placeholder-[#55555c] focus:border-[#ff7a1a] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="message" className="block meta-mono text-[#888890] mb-2">
+                MESSAGE *
+              </label>
+              <textarea
+                id="message"
+                required
+                rows={4}
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                placeholder="Describe your technical problem, architecture inquiry, or collaboration idea..."
+                className="w-full bg-[#0a0a0f] border border-white/[0.1] px-4 py-3 text-sm text-[#f4f4f6] placeholder-[#55555c] focus:border-[#ff7a1a] transition-colors resize-none"
+              />
+            </div>
+
+            {/* Status messages */}
+            {status === "error" && (
+              <div className="p-3 bg-red-950/20 border border-red-500/30 flex items-center gap-2 text-xs font-mono text-red-300">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{statusMessage}</span>
+              </div>
+            )}
+
+            {status === "success" && (
+              <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 flex items-center gap-2 text-xs font-mono text-emerald-300">
+                <Check className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{statusMessage}</span>
+              </div>
+            )}
+
+            {status === "fallback" && (
+              <div className="p-4 bg-white/[0.02] border border-[#ff7a1a]/40 space-y-3">
+                <p className="text-xs font-mono text-[#c0c0c8]">{statusMessage}</p>
+                <a
+                  href={mailtoUrl}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#ff7a1a] text-[#060608] font-mono text-xs uppercase tracking-wider font-semibold hover:bg-white transition-colors"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Open In Mail Client</span>
+                </a>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#f4f4f6] text-[#060608] hover:bg-[#ff7a1a] hover:text-white transition-all duration-300 text-xs font-mono uppercase tracking-widest font-semibold disabled:opacity-50"
+            >
+              {status === "loading" ? (
+                <span>Transmitting...</span>
+              ) : (
+                <>
+                  <span>Send Message</span>
+                  <Send className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
+
+      {/* Simple Footer with Back to Top */}
+      <footer className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-[#66666e] gap-4">
+        <div>
+          <span>&copy; 2026 Duncan D&apos;Lima.</span>
+          <span className="hidden sm:inline"> Built with Next.js & TypeScript.</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="inline-flex items-center gap-1.5 text-[#888890] hover:text-[#ff7a1a] transition-colors"
+        >
+          <span>Back to top</span>
+          <ArrowUp className="w-3.5 h-3.5" />
+        </button>
+      </footer>
     </section>
   );
 }

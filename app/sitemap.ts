@@ -1,10 +1,10 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://duncandlima.dev";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://duncan-portfolio.onrender.com";
   return [
     {
-      url: baseUrl,
+      url: siteUrl,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1.0,

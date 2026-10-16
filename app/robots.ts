@@ -1,11 +1,12 @@
 import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://duncan-portfolio.onrender.com";
   return {
     rules: {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://duncandlima.dev/sitemap.xml",
+    sitemap: `${siteUrl}/sitemap.xml`,
   };
 }
