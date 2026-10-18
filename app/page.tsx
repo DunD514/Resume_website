@@ -1,14 +1,12 @@
-import AerospaceExperience from "@/components/cinematic/AerospaceExperience";
-import MissionArchive from "@/components/cinematic/MissionArchive";
+import MacDesktop from "@/components/macos/MacDesktop";
+import { getAllProjects } from "@/lib/projects";
 
-export default function Home() {
+export default async function Home() {
+  const projects = await getAllProjects();
+
   return (
-    <main className="relative min-h-screen bg-[#040508] text-[#f4f4f6]">
-      {/* Acts 1 & 2: Ignition Launchpad & Interactive Earth Orbit Explorer */}
-      <AerospaceExperience />
-
-      {/* Act 3: Mission Archive Dossiers, Experience, Stack, GitHub & Contact */}
-      <MissionArchive />
+    <main className="w-screen h-screen overflow-hidden bg-black">
+      <MacDesktop initialProjects={projects} />
     </main>
   );
 }

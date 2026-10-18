@@ -4,22 +4,28 @@ import React, { useRef, useMemo, useState } from "react";
 import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { AtmosphereShader } from "./AtmosphereShader";
-import { PORTFOLIO_DATA, ProjectItem } from "@/data/portfolioData";
+import { UnifiedProject } from "@/lib/projects";
+import { PROJECT_CATEGORIES, ProjectCategoryKey } from "@/lib/projectCategories";
 
 interface EarthGlobeProps {
-  onSelectProject: (project: ProjectItem) => void;
+  projects: UnifiedProject[];
+  onSelectProject: (project: UnifiedProject) => void;
+  onHoverProject?: (project: UnifiedProject | null) => void;
   selectedProjectId: string | null;
-  activeCategory: string;
+  activeCategory: string; // "all" | categoryKey
 }
 
 export default function EarthGlobe({
+  projects,
   onSelectProject,
+  onHoverProject,
   selectedProjectId,
   activeCategory,
 }: EarthGlobeProps) {
   const earthGroupRef = useRef<THREE.Group>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Load NASA textures
   const [dayMap, cloudsMap, specularMap] = useLoader(THREE.TextureLoader, [
@@ -28,70 +34,104 @@ export default function EarthGlobe({
     "/textures/earth_specular.jpg",
   ]);
 
-  // Configure texture parameters
-  useMemo(() => {
-    dayMap.colorSpace = THREE.SRGBColorSpace;
-    cloudsMap.colorSpace = THREE.SRGBColorSpace;
-  }, [dayMap, cloudsMap]);
 
-  // Map projects to orbital bands deterministically
+
+  // Defined orbital bands based on PROJECT_CATEGORIES
   const orbitalBands = useMemo(() => {
     return [
       {
-        id: "ML/DS",
-        name: "Data Science & Machine Learning",
+        key: "computer-vision" as ProjectCategoryKey,
+        name: "Computer Vision",
         radius: 4.8,
         inclination: Math.PI / 6,
-        color: "#ff7a1a",
+        color: PROJECT_CATEGORIES["computer-vision"].accentColor,
       },
       {
-        id: "Data Eng",
-        name: "Data Engineering & Analytics",
-        radius: 5.5,
+        key: "ml-dl" as ProjectCategoryKey,
+        name: "Machine Learning & Deep Learning",
+        radius: 5.4,
+        inclination: -Math.PI / 8,
+        color: PROJECT_CATEGORIES["ml-dl"].accentColor,
+      },
+      {
+        key: "genai-llms" as ProjectCategoryKey,
+        name: "Generative AI & LLMs",
+        radius: 6.0,
+        inclination: Math.PI / 4,
+        color: PROJECT_CATEGORIES["genai-llms"].accentColor,
+      },
+      {
+        key: "data-engineering" as ProjectCategoryKey,
+        name: "Data Engineering & Databases",
+        radius: 6.6,
         inclination: 0,
-        color: "#38bdf8",
+        color: PROJECT_CATEGORIES["data-engineering"].accentColor,
       },
       {
-        id: "Applied AI",
-        name: "Applied AI & Software",
-        radius: 6.2,
-        inclination: Math.PI / 3,
-        color: "#a855f7",
-      },
-      {
-        id: "Aero",
-        name: "Robotics & Aerospace Research",
-        radius: 7.0,
+        key: "robotics-simulation" as ProjectCategoryKey,
+        name: "Robotics & Simulation",
+        radius: 7.2,
         inclination: -Math.PI / 4,
-        color: "#f59e0b",
+        color: PROJECT_CATEGORIES["robotics-simulation"].accentColor,
+      },
+      {
+        key: "web-apps" as ProjectCategoryKey,
+        name: "Web Systems & Applications",
+        radius: 7.8,
+        inclination: Math.PI / 5,
+        color: PROJECT_CATEGORIES["web-apps"].accentColor,
       },
     ];
   }, []);
 
-  // Compute marker positions on orbits
+  // Distribute projects gracefully across their designated orbital bands to avoid overcrowding
   const projectPositions = useMemo(() => {
-    return PORTFOLIO_DATA.projects.map((proj, idx) => {
-      const band = orbitalBands.find((b) => b.id === proj.category) || orbitalBands[0];
-      const angle = (idx * 1.35 + 0.5) % (Math.PI * 2);
-      const x = Math.cos(angle) * band.radius;
-      const z = Math.sin(angle) * band.radius;
-      const y = Math.sin(band.inclination) * z * 0.45;
+    if (!projects || projects.length === 0) return [];
 
-      return {
-        project: proj,
-        band,
-        position: new THREE.Vector3(x, y, z),
-      };
+    // Group projects by primary category
+    const grouped: Record<string, UnifiedProject[]> = {};
+    projects.forEach((p) => {
+      const key = p.primaryCategory;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(p);
     });
-  }, [orbitalBands]);
+
+    const positions: {
+      project: UnifiedProject;
+      band: (typeof orbitalBands)[0];
+      position: THREE.Vector3;
+    }[] = [];
+
+    orbitalBands.forEach((band) => {
+      const bandProjects = grouped[band.key] || [];
+      if (bandProjects.length === 0) return;
+
+      // Evenly distribute projects on this orbit
+      bandProjects.forEach((proj, idx) => {
+        const step = (Math.PI * 2) / bandProjects.length;
+        const angle = idx * step + 0.35;
+        const x = Math.cos(angle) * band.radius;
+        const z = Math.sin(angle) * band.radius;
+        const y = Math.sin(band.inclination) * z * 0.4;
+
+        positions.push({
+          project: proj,
+          band,
+          position: new THREE.Vector3(x, y, z),
+        });
+      });
+    });
+
+    return positions;
+  }, [projects, orbitalBands]);
 
   // Gentle Earth and Clouds rotation
   useFrame((_, delta) => {
     if (earthGroupRef.current) {
-      earthGroupRef.current.rotation.y += delta * 0.04;
+      earthGroupRef.current.rotation.y += delta * 0.035;
     }
     if (cloudsRef.current) {
-      cloudsRef.current.rotation.y += delta * 0.055;
+      cloudsRef.current.rotation.y += delta * 0.045;
     }
   });
 
@@ -110,7 +150,7 @@ export default function EarthGlobe({
           />
         </mesh>
 
-        {/* Separate Cloud Layer */}
+        {/* Cloud Layer */}
         <mesh ref={cloudsRef}>
           <sphereGeometry args={[3.23, 64, 64]} />
           <meshStandardMaterial
@@ -137,16 +177,19 @@ export default function EarthGlobe({
       {/* Orbital Tracks & Project Markers */}
       <group>
         {orbitalBands.map((band) => {
-          const isCategoryActive = activeCategory === "All" || activeCategory === band.id;
+          const isCategoryActive =
+            activeCategory === "all" ||
+            activeCategory === "All" ||
+            activeCategory === band.key;
+
           return (
-            <group key={band.id} rotation={[band.inclination, 0, 0]}>
-              {/* Orbital Ring Line */}
+            <group key={band.key} rotation={[band.inclination, 0, 0]}>
               <mesh>
                 <ringGeometry args={[band.radius - 0.015, band.radius + 0.015, 96]} />
                 <meshBasicMaterial
                   color={band.color}
                   transparent
-                  opacity={isCategoryActive ? 0.35 : 0.08}
+                  opacity={isCategoryActive ? 0.4 : 0.08}
                   side={THREE.DoubleSide}
                 />
               </mesh>
@@ -157,7 +200,15 @@ export default function EarthGlobe({
         {/* Project Beacon Markers */}
         {projectPositions.map(({ project, band, position }) => {
           const isSelected = selectedProjectId === project.id;
-          const isCategoryMatch = activeCategory === "All" || activeCategory === project.category;
+          const isHovered = hoveredId === project.id;
+          const isCategoryMatch =
+            activeCategory === "all" ||
+            activeCategory === "All" ||
+            activeCategory === project.primaryCategory ||
+            project.categories.includes(activeCategory as ProjectCategoryKey);
+
+          const coreRadius = isSelected ? 0.24 : isHovered ? 0.2 : project.isFeatured ? 0.16 : 0.13;
+          const ringRadius = isSelected ? 0.5 : isHovered ? 0.38 : 0.28;
 
           return (
             <group
@@ -167,24 +218,35 @@ export default function EarthGlobe({
                 e.stopPropagation();
                 onSelectProject(project);
               }}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                document.body.style.cursor = "pointer";
+                setHoveredId(project.id);
+                if (onHoverProject) onHoverProject(project);
+              }}
+              onPointerOut={() => {
+                document.body.style.cursor = "auto";
+                setHoveredId(null);
+                if (onHoverProject) onHoverProject(null);
+              }}
             >
               {/* Beacon Central Core */}
               <mesh>
-                <sphereGeometry args={[isSelected ? 0.22 : 0.14, 16, 16]} />
+                <sphereGeometry args={[coreRadius, 16, 16]} />
                 <meshBasicMaterial
-                  color={isSelected ? "#ffffff" : band.color}
+                  color={isSelected ? "#ffffff" : isHovered ? "#ffeedd" : band.color}
                   transparent
-                  opacity={isCategoryMatch ? 1 : 0.2}
+                  opacity={isCategoryMatch ? 1 : 0.18}
                 />
               </mesh>
 
               {/* Pulsing Beacon Halo */}
               <mesh>
-                <ringGeometry args={[0.2, isSelected ? 0.45 : 0.32, 24]} />
+                <ringGeometry args={[coreRadius + 0.04, ringRadius, 24]} />
                 <meshBasicMaterial
-                  color={band.color}
+                  color={isSelected ? "#ffffff" : band.color}
                   transparent
-                  opacity={isSelected ? 0.8 : isCategoryMatch ? 0.45 : 0.1}
+                  opacity={isSelected ? 0.85 : isHovered ? 0.65 : isCategoryMatch ? 0.35 : 0.08}
                   side={THREE.DoubleSide}
                 />
               </mesh>

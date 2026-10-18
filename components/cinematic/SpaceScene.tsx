@@ -5,16 +5,20 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import EarthGlobe from "./EarthGlobe";
-import { ProjectItem } from "@/data/portfolioData";
+import { UnifiedProject } from "@/lib/projects";
 
 interface SpaceSceneProps {
-  onSelectProject: (project: ProjectItem) => void;
+  projects: UnifiedProject[];
+  onSelectProject: (project: UnifiedProject) => void;
+  onHoverProject?: (project: UnifiedProject | null) => void;
   selectedProjectId: string | null;
   activeCategory: string;
 }
 
 export default function SpaceScene({
+  projects,
   onSelectProject,
+  onHoverProject,
   selectedProjectId,
   activeCategory,
 }: SpaceSceneProps) {
@@ -53,7 +57,9 @@ export default function SpaceScene({
 
         <Suspense fallback={null}>
           <EarthGlobe
+            projects={projects}
             onSelectProject={onSelectProject}
+            onHoverProject={onHoverProject}
             selectedProjectId={selectedProjectId}
             activeCategory={activeCategory}
           />
